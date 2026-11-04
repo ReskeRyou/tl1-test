@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кальяны — контроль таймингов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#15181d;--panel:#1e232a;--line:#2d343d;--tx:#eef1f4;--mu:#8d97a3;--g:#3ecf8e;--y:#f5c431;--r:#ff5a4f;--ac:#e8e3d3}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:Onest,system-ui,sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;border-radius:8px;padding:8px 12px;background:var(--line);font-weight:600;font-size:14px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+.primary{background:var(--ac);color:#15181d}
+.hidden{display:none!important}
+#login{display:grid;place-items:center;min-height:100vh;padding:20px}
+#login form{width:100%;max-width:340px;display:grid;gap:12px}
+#login h1{margin:0 0 8px;font-size:28px;font-weight:800}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;width:100%;resize:vertical}
+.err{color:var(--r);min-height:20px;font-size:14px}
+
+/* Header Compact */
+header{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:6px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5;height:52px}
+header h1{margin:0;font-size:16px;font-weight:800}
+header .actions{display:flex;gap:6px;align-items:center;}
+.icon-btn{
+  background:var(--panel);
+  border:1px solid var(--line);
+  color:var(--mu);
+  width:36px;
+  height:36px;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  font-size:16px;
+  font-weight:700;
+  transition:all 0.15s;
+}
+.icon-btn:hover{color:var(--tx); border-color:var(--tx);}
+.icon-btn.primary-icon{background:var(--ac); border-color:var(--ac); color:#15181d;}
+.icon-btn.green-icon{background:rgba(62,207,142,0.2); border-color:var(--g); color:var(--g);}
+.icon-btn.green-icon:hover{background:var(--g); color:#15181d;}
+
+.tabs{display:flex;gap:6px;padding:8px 16px}
+.tabs button{background:var(--panel);padding:6px 12px;font-size:13px}
+.tabs button.on{background:var(--ac);color:#15181d}
+
+/* Quick List */
+.quick-list{padding:0 16px 8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:24px;}
+.quick-list .label{font-size:12px;color:var(--mu);margin-right:4px}
+.quick-list .item{background:rgba(255,90,79,.15);border:1px solid var(--r);color:var(--tx);padding:4px 8px;border-radius:6px;font-size:12px;font-weight:600}
+.quick-list .item.soon{background:rgba(245,196,49,.15);border-color:var(--y);}
+
+/* Masonry Layout */
+.grid{
+  column-width: 280px;
+  column-gap: 10px;
+  padding: 0 12px 90px;
+}
+
+.stack{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  break-inside: avoid;
+  margin-bottom: 10px;
+}
+
+.card{background:var(--panel);border-radius:12px;padding:10px;border-left:6px solid var(--g);display:grid;gap:6px;position:relative;transition: all 0.2s;}
+.card.y{border-color:var(--y)}.card.r{border-color:var(--r)}.card.pend{border-color:var(--r)}
+.card.off{border-color:var(--line);opacity:.8}
+
+.stack .card:not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 1px solid var(--bg); margin-top: -1px; }
+.stack .card:not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 1px solid rgba(0,0,0,0.2); }
+.stack .card:only-child { border-radius: 12px; border: none; }
+
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:4px}
+.name{font-weight:800;font-size:14px;line-height:1.2}
+.sub{color:var(--mu);font-size:11px}
+
+.comment-box{
+  background: rgba(232, 227, 211, 0.12);
+  border-left: 3px solid var(--ac);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--tx);
+  line-height: 1.3;
+  word-break: break-word;
+  margin: 2px 0;
+}
+
+.big{font-size:32px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.g .big{color:var(--g)}.y .big{color:var(--y)}.r .big{color:var(--r)}
+.status{font-weight:600;font-size:12px}
+.row{display:flex;justify-content:space-between;color:var(--mu);font-size:12px;font-variant-numeric:tabular-nums}
+.alert{background:rgba(245,196,49,.15);border:1px solid var(--y);border-radius:8px;padding:8px;display:grid;gap:6px;font-size:12px;font-weight:600}
+.alert.red{background:rgba(255,90,79,.18);border-color:var(--r)}
+.alert.soon{background:rgba(141,151,163,.12);border-color:var(--mu)}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.btns button{flex:1;padding:6px 8px;font-size:12px;border-radius:6px}
+.primary-action {background: var(--ac); color: #15181d;}
+.ok{background:var(--g);color:#0b1f15}.bad{background:var(--line)}
+.tag{font-size:11px;color:var(--mu)}
+.empty{color:var(--mu);padding:40px 16px;text-align:center;width: 100%; display: block;}
+
+/* FAB */
+#fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));padding:12px 18px;border-radius:999px;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+
+/* Modal */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:end center;z-index:10}
+.sheet{background:var(--panel);width:100%;max-width:460px;border-radius:18px 18px 0 0;padding:16px;display:grid;gap:10px;max-height:90vh;overflow-y:auto}
+.sheet h2{margin:0;font-size:18px}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.opts button{background:var(--bg);border:2px solid var(--line);font-size:12px;padding:8px 4px}
+.opts button.on{border-color:var(--ac)}
+.opts.two{grid-template-columns:1fr 1fr}
+.qty-wrap{display:flex;gap:6px;align-items:center;background:var(--bg);padding:6px;border-radius:8px;}
+.qty-wrap button{flex:1;background:var(--panel);border:1px solid var(--line);}
+.qty-wrap .val{font-weight:800;font-size:16px;min-width:24px;text-align:center;}
+
+.edit-btn{background:transparent;padding:2px;color:var(--mu);width:auto;flex:0 0 auto;font-size:16px;}
+.edit-btn:hover{color:var(--tx)}
+
+/* Статистика */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.stat-box{background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--line);}
+.stat-label{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:0.5px;}
+.stat-val{font-size:20px;font-weight:800;margin-top:2px;}
+.stat-val.green{color:var(--g);}
+.stat-val.red{color:var(--r);}
+.stat-val.yellow{color:var(--y);}
+.export-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;padding:12px;font-size:14px;}
+
+/* Таблица в отчете */
+.report-table-wrap { max-height: 400px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.report-table th { background: var(--bg); padding: 6px 4px; text-align: left; color: var(--mu); position: sticky; top: 0; border-bottom: 1px solid var(--line); }
+.report-table td { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.report-table tr:last-child td { border-bottom: 0; }
+.report-table td.green { color: var(--g); }
+.report-table td.yellow { color: var(--y); }
+.report-table td.red { color: var(--r); }
+
+/* Помощь */
+.help-content{font-size:14px;line-height:1.5;color:var(--tx);}
+.help-content h3{margin:12px 0 4px;font-size:15px;color:var(--ac);}
+.help-content p{margin:0 0 8px;}
+.help-content ul{margin:0 0 8px;padding-left:20px;}
+.help-content li{margin-bottom:4px;}
+.help-content b{color:var(--ac);}
+.help-content .color-box{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:4px;vertical-align:middle;}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form id="lf">
+    <h1>Вход</h1>
+    <input id="lu" placeholder="Логин" autocomplete="username" autocapitalize="off" required>
+    <input id="lp" type="password" placeholder="Пароль" autocomplete="current-password" required>
+    <div class="err" id="le"></div>
+    <button class="primary" type="submit">Войти</button>
+    <button type="button" onclick="localStorage.clear(); location.reload();" style="background:transparent; color:var(--mu); font-size:12px; margin-top:10px;">Сбросить данные и войти заново</button>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>Кальяны</h1>
+    <div class="actions">
+      <button id="help-btn" class="icon-btn" title="Помощь">?</button>
+      <button id="stats-btn" class="icon-btn green-icon" title="Отчет и статистика">📊</button>
+      <button id="all" class="icon-btn primary-icon" title="Сбросить таймеры у всех">↻</button>
+      <button id="logout" class="icon-btn" title="Выйти">⎋</button>
+    </div>
+  </header>
+  <div class="tabs">
+    <button id="t-hall" class="on">В зале</button>
+    <button id="t-off">Отбито</button>
+  </div>
+  
+  <div class="quick-list" id="quick-list" style="padding-bottom:4px;"></div>
+  <div class="quick-list" id="quick-list-soon" style="padding-top:0;"></div>
+
+  <div class="grid" id="list"></div>
+  <button id="fab" class="primary">+ Добавить кальян</button>
+</div>
+
+<!-- Модальное окно добавления -->
+<div id="modal" class="hidden">
+  <div class="sheet">
+    <h2 id="modal-title">Новый кальян</h2>
+    <div class="opts" id="types"></div>
+    <select id="tbl"></select>
+    
+    <div class="qty-wrap">
+      <button type="button" id="qty-minus">−</button>
+      <div class="val" id="qty-val">1</div>
+      <button type="button" id="qty-plus">+</button>
+    </div>
+
+    <textarea id="comment" placeholder="Комментарий (по желанию)" rows="2" style="font-size:13px"></textarea>
+    <div class="err" id="terr"></div>
+    <div class="opts two" id="whens">
+      <button data-w="now" class="on">Сейчас</button>
+      <button data-w="manual">Указать время</button>
+    </div>
+    <input id="tm" type="time" class="hidden">
+    <div class="btns" style="margin-top:8px">
+      <button id="cancel">Отмена</button>
+      <button id="save" class="primary">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно редактирования -->
+<div id="modal-edit" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:end center;z-index:11">
+  <div class="sheet">
+    <h2>Изменить кальян</h2>
+    <div class="opts" id="edit-types" style="margin-bottom:8px"></div>
+    <select id="edit-tbl"></select>
+    <textarea id="edit-comment" placeholder="Комментарий" rows="2" style="font-size:13px; margin-top:8px;"></textarea>
+    <div class="btns" style="margin-top:8px">
+      <button id="cancel-edit">Отмена</button>
+      <button id="save-edit" class="primary">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модальное окно Статистики -->
+<div id="modal-stats" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:center;z-index:12;padding:20px">
+  <div class="sheet" style="border-radius:16px; max-height:90vh; width:100%; max-width:600px; overflow-y:auto;">
+    <h2 style="display:flex; justify-content:space-between; align-items:center;">
+      Отчет за смену
+      <button id="close-stats" style="padding:4px 8px; font-size:16px; background:var(--line);">×</button>
+    </h2>
+    <div id="stats-content">
+      <!-- Данные вставляются скриптом -->
+    </div>
+    <button id="export-csv" class="primary export-btn">📥 Скачать CSV (Excel)</button>
+  </div>
+</div>
+
+<!-- Модальное окно помощи -->
+<div id="modal-help" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:grid;place-items:center;z-index:12;padding:20px">
+  <div class="sheet" style="border-radius:16px; max-height:85vh; width:100%; max-width:500px;">
+    <h2 style="display:flex; justify-content:space-between; align-items:center;">
+      Помощь
+      <button id="close-help" style="padding:4px 8px; font-size:16px; background:var(--line);">×</button>
+    </h2>
+    <div class="help-content">
+      <h3>Как добавить кальян</h3>
+      <p>Нажмите <b>«+ Добавить кальян»</b> внизу справа. Выберите тип, стол, количество и при необходимости укажите комментарий.</p>
+
+      <h3>Цвета таймера углей</h3>
+      <ul>
+        <li><span class="color-box" style="background:var(--g)"></span> <b>Зеленый</b> — угли свежие.</li>
+        <li><span class="color-box" style="background:var(--y)"></span> <b>Желтый</b> — пора менять угли (15 мин).</li>
+        <li><span class="color-box" style="background:var(--r)"></span> <b>Красный</b> — замена просрочена (20+ мин).</li>
+      </ul>
+
+      <h3>Кнопки на карточке</h3>
+      <ul>
+        <li><b>Замена углей</b> — сбрасывает таймер углей.</li>
+        <li><b>Убрать (×)</b> — убирает кальян из зала в раздел «Отбито».</li>
+      </ul>
+
+      <h3>Отчет (📊)</h3>
+      <p>Кнопка в шапке открывает сводку за смену. Вы можете скачать файл CSV и открыть его в Excel или Google Таблицах для детального анализа.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- АВТОМАТИЧЕСКАЯ ГЕНЕРАЦИЯ ХЭША ДЛЯ ВХОДА ---
+// Логин: TL1, Пароль: bukaka
+const AUTH_SALT = 'hk-7f3a91c2', AUTH_ITER = 50000;
+let AUTH_HASH = '';
+
+function sha256(m){const K=new Uint32Array(64);let p=2,c=0;while(c<64){let ok=true;for(let d=2;d*d<=p;d++)if(p%d==0){ok=false;break}if(ok)K[c++]=Math.floor((Math.cbrt(p)%1)*4294967296);p++}
+const H=new Uint32Array(8);p=2;c=0;while(c<8){let ok=true;for(let d=2;d*d<=p;d++)if(p%d==0){ok=false;break}if(ok)H[c++]=Math.floor((Math.sqrt(p)%1)*4294967296);p++}
+const l=m.length,n=((l+9+63)>>6)<<6,b=new Uint8Array(n);b.set(m);b[l]=128;const dv=new DataView(b.buffer);dv.setUint32(n-4,l*8>>>0);dv.setUint32(n-8,Math.floor(l/536870912));
+const w=new Uint32Array(64),r=(x,k)=>(x>>>k)|(x<<(32-k));
+for(let o=0;o<n;o+=64){for(let i=0;i<16;i++)w[i]=dv.getUint32(o+i*4);
+for(let i=16;i<64;i++){const a=w[i-15],e=w[i-2];w[i]=(w[i-16]+(r(a,7)^r(a,18)^(a>>>3))+w[i-7]+(r(e,17)^r(e,19)^(e>>>10)))>>>0}
+let[a,e,f,g,h,i2,j,k]=H;for(let i=0;i<64;i++){const t1=(k+(r(h,6)^r(h,11)^r(h,25))+((h&i2)^(~h&j))+K[i]+w[i])>>>0,t2=((r(a,2)^r(a,13)^r(a,22))+((a&e)^(a&f)^(e&f)))>>>0;k=j;j=i2;i2=h;h=(g+t1)>>>0;g=f;f=e;e=a;a=(t1+t2)>>>0}
+[a,e,f,g,h,i2,j,k].forEach((v,i)=>H[i]=(H[i]+v)>>>0)}
+const out=new Uint8Array(32),ov=new DataView(out.buffer);H.forEach((v,i)=>ov.setUint32(i*4,v));return out}
+const hex=u=>[...u].map(x=>x.toString(16).padStart(2,'0')).join('');
+
+// Генерируем хэш при загрузке скрипта
+function generateAuthHash() {
+  let h = sha256(new TextEncoder().encode(AUTH_SALT + ':TL1:bukaka'));
+  for (let i = 1; i < AUTH_ITER; i++) h = sha256(h);
+  AUTH_HASH = hex(h);
+}
+generateAuthHash();
+// ------------------------------------------------
+
+const TYPES = {
+  classic:  {name: 'Классика',   offerMin: 60},
+  fruit:    {name: 'На фрукте',  offerMin: 90},
+  signature:{name: 'Фирменный',  offerMin: 90}
+};
+const COAL_YELLOW = 15, COAL_RED = 20, EARLY_WARN = 15;
+
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } };
+const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} };
+
+const TABLES = [];
+for (let i = 1; i <= 9; i++) TABLES.push('Стол ' + i);
+TABLES.push('VIP комната');
+for (let i = 1; i <= 4; i++) TABLES.push('Кальянный бар ' + i);
+for (let i = 1; i <= 4; i++) TABLES.push('Коктейльный ' + i);
+
+const optionsHtml = '<option value="">Выберите стол</option>' + TABLES.map(t => `<option>${t}</option>`).join('');
+$('tbl').innerHTML = optionsHtml;
+$('edit-tbl').innerHTML = optionsHtml;
+
+let items = load('hk_items', []);
+let tab = 'hall', pickedType = 'classic', pickedWhen = 'now';
+let editId = null;
+let qty = 1;
+
+const pad = n => String(n).padStart(2, '0');
+const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600); return (h ? h + ':' : '') + pad(Math.floor(s % 3600 / 60)) + ':' + pad(s % 60) };
+const clock = ms => { const d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()) };
+
+function showApp() { $('login').classList.add('hidden'); $('app').classList.remove('hidden'); render(); }
+$('lf').onsubmit = e => {
+  e.preventDefault();
+  const u = $('lu').value.trim();
+  const p = $('lp').value;
+  
+  // Сравниваем сгенерированный хэш
+  if (authHash(u, p) === AUTH_HASH) {
+    try { localStorage.setItem('hk_auth', AUTH_HASH) } catch {}
+    showApp();
+  } else {
+    $('le').textContent = 'Неверный логин или пароль';
+  }
+};
+
+// Вспомогательная функция для сравнения пароля
+function authHash(login, pass) {
+  let h = sha256(new TextEncoder().encode(AUTH_SALT + ':' + login + ':' + pass));
+  for (let i = 1; i < AUTH_ITER; i++) h = sha256(h);
+  return hex(h);
+}
+
+$('logout').onclick = () => { try { localStorage.removeItem('hk_auth') } catch {} location.reload(); };
+let authed = false;
+try { authed = localStorage.getItem('hk_auth') === AUTH_HASH; } catch {}
+if (authed) showApp();
+
+$('help-btn').onclick = () => $('modal-help').classList.remove('hidden');
+$('close-help').onclick = () => $('modal-help').classList.add('hidden');
+
+$('t-hall').onclick = () => { tab = 'hall'; render(); };
+$('t-off').onclick = () => { tab = 'off'; render(); };
+
+// --- Статистика и Экспорт ---
+$('stats-btn').onclick = () => {
+  updateStats();
+  $('modal-stats').classList.remove('hidden');
+};
+$('close-stats').onclick = () => $('modal-stats').classList.add('hidden');
+
+function getStatsData() {
+  const all = items;
+  
+  let coalTimes = []; 
+  all.forEach(it => {
+    if (it.coalChanges && it.coalChanges.length > 1) {
+      for (let i = 1; i < it.coalChanges.length; i++) {
+        coalTimes.push(Math.round((it.coalChanges[i] - it.coalChanges[i-1]) / 60000));
+      }
+    }
+  });
+
+  const avgCoal = coalTimes.length ? Math.round(coalTimes.reduce((a, b) => a + b, 0) / coalTimes.length) : 0;
+  const minCoal = coalTimes.length ? Math.min(...coalTimes) : 0;
+  const maxCoal = coalTimes.length ? Math.max(...coalTimes) : 0;
+  
+  let coalColorClass = 'green';
+  if (avgCoal > COAL_RED) coalColorClass = 'red';
+  else if (avgCoal > COAL_YELLOW) coalColorClass = 'yellow';
+
+  let totalOffers = 0;
+  let acceptedOffers = 0;
+  all.forEach(it => {
+    if (it.offerHistory) {
+      it.offerHistory.forEach(o => {
+        totalOffers++;
+        if (o.status === 'accepted') acceptedOffers++;
+      });
+    }
+  });
+  const conversion = totalOffers > 0 ? Math.round((acceptedOffers / totalOffers) * 100) : 0;
+
+  let offCount = 0;
+  all.forEach(it => { if (it.removed) offCount++; });
+
+  return { avgCoal, minCoal, maxCoal, coalColorClass, totalOffers, acceptedOffers, conversion, offCount };
+}
+
+function updateStats() {
+  const s = getStatsData();
+  
+  let tableRows = '';
+  items.forEach(it => {
+    const start = clock(it.start);
+    const typeName = TYPES[it.type].name;
+    
+    let minC = '-', avgC = '-', maxC = '-';
+    let rowClass = '';
+    if (it.coalChanges && it.coalChanges.length > 1) {
+      const diffs = [];
+      for (let i = 1; i < it.coalChanges.length; i++) {
+        diffs.push(Math.round((it.coalChanges[i] - it.coalChanges[i-1]) / 60000));
+      }
+      minC = Math.min(...diffs);
+      maxC = Math.max(...diffs);
+      avgC = Math.round(diffs.reduce((a,b)=>a+b,0) / diffs.length);
+      
+      if (avgC > COAL_RED) rowClass = 'red';
+      else if (avgC > COAL_YELLOW) rowClass = 'yellow';
+      else rowClass = 'green';
+    }
+
+    tableRows += `<tr>
+      <td>${typeName}</td>
+      <td>${esc(it.table)}</td>
+      <td>${start}</td>
+      <td class="${rowClass}">${minC}</td>
+      <td class="${rowClass}">${avgC}</td>
+      <td class="${rowClass}">${maxC}</td>
+    </tr>`;
+  });
+
+  $('stats-content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-box" style="grid-column: span 2;">
+        <div class="stat-label">Среднее время замены углей</div>
+        <div class="stat-val ${s.coalColorClass}">${s.avgCoal} мин</div>
+        <div style="font-size:10px; color:var(--mu); margin-top:2px;">Мин: ${s.minCoal} | Макс: ${s.maxCoal}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Предложено НК</div>
+        <div class="stat-val">${s.totalOffers}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Конверсия</div>
+        <div class="stat-val ${s.conversion > 50 ? 'green' : (s.conversion > 0 ? 'yellow' : '')}">${s.conversion}%</div>
+      </div>
+      <div class="stat-box" style="grid-column: span 2;">
+        <div class="stat-label">Отбито кальянов</div>
+        <div class="stat-val red">${s.offCount}</div>
+      </div>
+    </div>
+
+    <div class="report-table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Тип</th>
+            <th>Стол</th>
+            <th>Старт</th>
+            <th>Мин</th>
+            <th>Сред</th>
+            <th>Макс</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows || '<tr><td colspan="6" style="text-align:center; color:var(--mu);">Нет данных</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:11px; color:var(--mu); text-align:center; margin-top:8px;">
+      * Цвет указывает на качество обслуживания (Зеленый - отлично, Красный - просрочка).
+    </div>
+  `;
+}
+
+// Экспорт CSV
+$('export-csv').onclick = () => {
+  const stats = getStatsData();
+  
+  let csv = '\uFEFF'; 
+  
+  csv += 'СВОДКА ЗА СМЕНУ\n';
+  csv += 'Показатель;Значение\n';
+  csv += `Среднее время замены углей (мин);${stats.avgCoal}\n`;
+  csv += `Мин. время замены (мин);${stats.minCoal}\n`;
+  csv += `Макс. время замены (мин);${stats.maxCoal}\n`;
+  csv += `Всего предложений НК;${stats.totalOffers}\n`;
+  csv += `Принято предложений;${stats.acceptedOffers}\n`;
+  csv += `Конверсия (%);${stats.conversion}\n`;
+  csv += `Отбито кальянов;${stats.offCount}\n`;
+  csv += '\n';
+
+  csv += 'ДЕТАЛИЗАЦИЯ ПО КАЛЬЯНАМ\n';
+  csv += 'Тип;Стол;Старт;Статус;Мин. замена (мин);Сред. замена (мин);Макс. замена (мин);История предложений;Комментарий\n';
+  
+  items.forEach(it => {
+    const start = new Date(it.start).toLocaleString('ru-RU');
+    const typeName = TYPES[it.type].name;
+    let status = it.removed ? 'Отбит' : 'В зале';
+
+    let minC = 0, avgC = 0, maxC = 0;
+    if (it.coalChanges && it.coalChanges.length > 1) {
+      const diffs = [];
+      for (let i = 1; i < it.coalChanges.length; i++) {
+        diffs.push(Math.round((it.coalChanges[i] - it.coalChanges[i-1]) / 60000));
+      }
+      minC = Math.min(...diffs);
+      maxC = Math.max(...diffs);
+      avgC = Math.round(diffs.reduce((a,b)=>a+b,0) / diffs.length);
+    }
+
+    let offersStr = '';
+    if (it.offerHistory && it.offerHistory.length) {
+      offersStr = it.offerHistory.map(o => o.status === 'accepted' ? 'Принято' : 'Отклонено').join(' / ');
+    }
+
+    const safeComment = (it.comment || '').replace(/;/g, ',').replace(/\n/g, ' ');
+    
+    csv += `${typeName};${it.table};${start};${status};${minC};${avgC};${maxC};${offersStr};${safeComment}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `Отчет_Кальяны_${new Date().toLocaleDateString('ru-RU').replace(/\./g, '-')}.csv`;
+  link.click();
+};
+// -----------------------------
+
+// Заполняем типы
+const typeButtonsHtml = Object.entries(TYPES).map(([k, t]) => `<button data-t="${k}">${t.name}</button>`).join('');
+$('types').innerHTML = typeButtonsHtml;
+$('edit-types').innerHTML = typeButtonsHtml;
+
+function syncModal() {
+  document.querySelectorAll('#types button').forEach(b => b.classList.toggle('on', b.dataset.t === pickedType));
+  document.querySelectorAll('#whens button').forEach(b => b.classList.toggle('on', b.dataset.w === pickedWhen));
+  $('tm').classList.toggle('hidden', pickedWhen !== 'manual');
+  $('qty-val').textContent = qty;
+}
+$('types').onclick = e => { if (e.target.dataset.t) { pickedType = e.target.dataset.t; syncModal(); } };
+$('whens').onclick = e => {
+  if (!e.target.dataset.w) return;
+  pickedWhen = e.target.dataset.w;
+  if (pickedWhen === 'manual' && !$('tm').value) $('tm').value = clock(Date.now());
+  syncModal();
+};
+
+$('qty-minus').onclick = () => { if (qty > 1) { qty--; syncModal(); } };
+$('qty-plus').onclick = () => { if (qty < 10) { qty++; syncModal(); } };
+
+$('fab').onclick = () => { 
+  $('tbl').value = ''; 
+  $('terr').textContent = ''; 
+  $('comment').value = '';
+  pickedWhen = 'now'; 
+  qty = 1;
+  syncModal(); 
+  $('modal').classList.remove('hidden'); 
+};
+$('cancel').onclick = () => $('modal').classList.add('hidden');
+$('save').onclick = () => {
+  if (!$('tbl').value) { $('terr').textContent = 'Выберите стол'; return; }
+  let start = Date.now();
+  if (pickedWhen === 'manual' && $('tm').value) {
+    const [h, m] = $('tm').value.split(':').map(Number);
+    const d = new Date(); d.setHours(h, m, 0, 0);
+    if (d.getTime() > Date.now()) d.setDate(d.getDate() - 1);
+    start = d.getTime();
+  }
+
+  for (let i = 0; i < qty; i++) {
+    items.push({
+      id: Date.now() + '' + Math.random().toString(16).slice(2, 6) + i, 
+      type: pickedType, 
+      table: $('tbl').value, 
+      start, 
+      lastChange: start, 
+      offer: null, 
+      removed: false,
+      coalChanges: [start], 
+      offerHistory: [], 
+      comment: $('comment').value.trim()
+    });
+  }
+
+  save('hk_items', items);
+  $('modal').classList.add('hidden');
+  tab = 'hall'; render();
+};
+
+function openEdit(id) {
+  const it = items.find(x => x.id === id);
+  if (!it) return;
+  editId = id;
+  $('edit-tbl').value = it.table;
+  $('edit-comment').value = it.comment || '';
+  
+  document.querySelectorAll('#edit-types button').forEach(b => {
+    b.classList.toggle('on', b.dataset.t === it.type);
+  });
+
+  $('modal-edit').classList.remove('hidden');
+}
+$('edit-types').onclick = e => { 
+  if (e.target.dataset.t) { 
+    document.querySelectorAll('#edit-types button').forEach(b => b.classList.toggle('on', b.dataset.t === e.target.dataset.t)); 
+  } 
+};
+
+$('cancel-edit').onclick = () => $('modal-edit').classList.add('hidden');
+$('save-edit').onclick = () => {
+  const it = items.find(x => x.id === editId);
+  if (it) {
+    it.table = $('edit-tbl').value;
+    it.comment = $('edit-comment').value.trim();
+    
+    const activeType = document.querySelector('#edit-types button.on');
+    if (activeType) it.type = activeType.dataset.t;
+
+    save('hk_items', items);
+    render();
+  }
+  $('modal-edit').classList.add('hidden');
+};
+
+$('all').onclick = () => {
+  const now = Date.now();
+  items.forEach(i => { if (!i.removed) { i.lastChange = now; i.coalChanges.push(now); i.offer = null; } });
+  save('hk_items', items); render();
+};
+
+$('list').onclick = e => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const it = items.find(x => x.id === b.dataset.id); if (!it) return;
+  const a = b.dataset.a;
+  
+  if (a === 'change') { 
+    it.lastChange = Date.now(); 
+    it.coalChanges.push(it.lastChange);
+  }
+  
+  if (a === 'accept') { 
+    it.offer = 'accepted'; 
+    it.offerHistory.push({ status: 'accepted', time: Date.now() });
+  }
+  
+  if (a === 'decline') {
+    it.offer = 'declined';
+    it.offerHistory.push({ status: 'declined', time: Date.now() });
+  }
+  
+  if (a === 'off') { 
+    it.removed = true; 
+    it.removedAt = Date.now(); 
+  }
+  
+  if (a === 'restore') { 
+    it.removed = false; 
+  }
+  
+  if (a === 'edit') { openEdit(it.id); return; }
+  
+  save('hk_items', items); render();
+};
+
+function cardHtml(it, now) {
+  const t = TYPES[it.type];
+  
+  const title = `<div class="top">
+    <span class="name">${t.name}${it.table ? ' · ' + esc(it.table) : ''}</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      <span class="sub">${clock(it.start)}</span>
+      <button class="edit-btn" data-a="edit" data-id="${it.id}" title="Изменить">✎</button>
+    </div>
+  </div>`;
+
+  if (it.removed) return `<div class="card off">${title}${it.comment ? `<div class="comment-box">${esc(it.comment)}</div>` : ''}
+    <div class="sub">Убран. Прошло: ${fmt(it.removedAt ? it.removedAt - it.start : now - it.start)}</div>
+    <div class="btns"><button data-a="restore" data-id="${it.id}">Вернуть в зал</button></div></div>`;
+
+  const local = (now - it.lastChange) / 60000; 
+  const glob = (now - it.start) / 60000; 
+  const cls = local >= COAL_RED ? 'r' : local >= COAL_YELLOW ? 'y' : 'g';
+  const status = cls === 'g' ? 'Угли в норме' : cls === 'y' ? 'Требуется замена' : 'Замена просрочена';
+  const left = t.offerMin - glob;
+
+  let alert = '', pend = '';
+  
+  if (!it.offer) {
+    const due = left <= 0;
+    const early = !due && left < EARLY_WARN;
+    if (due) pend = 'pend';
+    
+    if (due || early) {
+      alert = `<div class="alert ${due ? 'red' : 'soon'}">
+        <div>${due ? 'Предложите новый кальян!' : 'До предложения НК < 15 мин: ' + Math.max(1, Math.ceil(left)) + ' мин.'}</div>
+        <div class="btns">
+          <button class="ok" data-a="accept" data-id="${it.id}">Принято</button>
+          <button class="bad" data-a="decline" data-id="${it.id}">Нет</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  const offerTag = it.offer === 'declined' ? `<div class="tag">Новый кальян: отклонено</div>` : '';
+
+  return `<div class="card ${cls} ${pend}">${title}
+    ${it.comment ? `<div class="comment-box">${esc(it.comment)}</div>` : ''}
+    <div class="${cls}"><div class="big">${fmt(now - it.lastChange)}</div><div class="status">${status}</div></div>
+    <div class="row"><span>Всего</span><span>${fmt(now - it.start)}</span></div>
+    <div class="row"><span>До предложения (${t.offerMin}м)</span><span>${left > 0 ? fmt(left * 60000) : 'пора'}</span></div>
+    ${alert}${offerTag}
+    <div class="btns">
+      <button class="primary" data-a="change" data-id="${it.id}">Замена углей</button>
+      <button data-a="off" data-id="${it.id}" style="flex:0;padding:6px 10px; background:rgba(255,90,79,0.2); color:var(--r);" title="Убрать в Отбито">×</button>
+    </div>
+  </div>`;
+}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+function render() {
+  if ($('app').classList.contains('hidden')) return;
+  const now = Date.now();
+  $('t-hall').classList.toggle('on', tab === 'hall');
+  $('t-off').classList.toggle('on', tab === 'off');
+  
+  const hall = items.filter(i => !i.removed);
+  const off = items.filter(i => i.removed);
+  
+  $('t-hall').textContent = 'В зале (' + hall.length + ')';
+  $('t-off').textContent = 'Отбито (' + off.length + ')';
+
+  const needUpdate = hall.filter(it => {
+    if (it.offer === 'accepted') return false; 
+    const t = TYPES[it.type];
+    const glob = (now - it.start) / 60000;
+    return (t.offerMin - glob) <= 0; 
+  });
+  
+  const groupedNeedUpdate = {};
+  needUpdate.forEach(it => {
+    if (!groupedNeedUpdate[it.table]) groupedNeedUpdate[it.table] = 0;
+    groupedNeedUpdate[it.table]++;
+  });
+
+  let quickHtml = '';
+  Object.keys(groupedNeedUpdate).forEach(table => {
+    const count = groupedNeedUpdate[table];
+    const label = count > 1 ? `${table} | x${count}` : table;
+    quickHtml += `<span class="item">${esc(label)}</span>`;
+  });
+
+  $('quick-list').innerHTML = needUpdate.length 
+    ? '<span class="label">Предложить:</span>' + quickHtml
+    : '';
+
+  const soonUpdate = hall.filter(it => {
+    if (it.offer === 'accepted') return false; 
+    const t = TYPES[it.type];
+    const glob = (now - it.start) / 60000;
+    const left = t.offerMin - glob;
+    return left > 0 && left < EARLY_WARN; 
+  });
+  
+  const groupedSoon = {};
+  soonUpdate.forEach(it => {
+    if (!groupedSoon[it.table]) groupedSoon[it.table] = 0;
+    groupedSoon[it.table]++;
+  });
+
+  let soonHtml = '';
+  Object.keys(groupedSoon).forEach(table => {
+    const count = groupedSoon[table];
+    const label = count > 1 ? `${table} | x${count}` : table;
+    soonHtml += `<span class="item soon">${esc(label)}</span>`;
+  });
+
+  $('quick-list-soon').innerHTML = soonUpdate.length 
+    ? '<span class="label">До предложения НК < 15 мин:</span>' + soonHtml
+    : '';
+
+  const shown = tab === 'hall' ? hall : off;
+  
+  if (!shown.length) {
+    $('list').innerHTML = `<div class="empty">${tab === 'hall' ? 'В зале пока нет кальянов.' : 'Здесь появятся убранные кальяны.'}</div>`;
+    return;
+  }
+
+  const groups = {};
+  shown.forEach(it => {
+    if (!groups[it.table]) groups[it.table] = [];
+    groups[it.table].push(it);
+  });
+
+  let html = '';
+  Object.keys(groups).sort().forEach(tableName => {
+    const group = groups[tableName].sort((a, b) => a.start - b.start);
+    html += `<div class="stack">`;
+    group.forEach(it => {
+      html += cardHtml(it, now);
+    });
+    html += `</div>`;
+  });
+
+  $('list').innerHTML = html;
+}
+
+let pressed = false;
+$('list').addEventListener('pointerdown', () => pressed = true);
+['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => $('list').addEventListener(ev, () => setTimeout(() => pressed = false, 50)));
+setInterval(() => { if (!pressed) render(); }, 1000);
+</script>
+</body>
+</html>
